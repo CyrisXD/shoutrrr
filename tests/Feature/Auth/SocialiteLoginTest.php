@@ -7,16 +7,18 @@ use App\Models\User;
 use App\Services\Auth\SocialiteService;
 use Illuminate\Database\QueryException;
 use Inertia\Testing\AssertableInertia as Assert;
-use Laravel\Socialite\Contracts\Provider as SocialiteProvider;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\AbstractProvider;
 
 /**
  * Build a fake Socialite user and bind it to the mocked driver.
  *
  * @param  array<string, mixed>  $overrides
+ * @param  string  $driver  The Socialite driver name the controller resolves
+ *                          (e.g. 'google', 'x', 'linkedin-openid').
  */
-function fakeSocialiteUser(array $overrides = []): SocialiteUser
+function fakeSocialiteUser(array $overrides = [], string $driver = 'google'): SocialiteUser
 {
     $data = array_merge([
         'id' => 'google-123',
@@ -35,11 +37,12 @@ function fakeSocialiteUser(array $overrides = []): SocialiteUser
     $user->shouldReceive('getAvatar')->andReturn($data['avatar']);
     $user->user = ['email_verified' => $data['email_verified']];
 
-    $provider = Mockery::mock(SocialiteProvider::class);
+    $provider = Mockery::mock(AbstractProvider::class);
+    $provider->shouldReceive('redirectUrl')->andReturnSelf();
     $provider->shouldReceive('user')->andReturn($user);
     $provider->shouldReceive('redirect')->andReturn(redirect('https://accounts.google.com/o/oauth2/auth'));
 
-    Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+    Socialite::shouldReceive('driver')->with($driver)->andReturn($provider);
 
     return $user;
 }
@@ -271,4 +274,74 @@ test('callback with a provider that shares no email redirects to login with an e
 
     $this->assertGuest();
     expect(User::count())->toBe(0);
+});
+
+test('an X account is auto-linked via its confirmed email even without an email_verified flag', function () {
+    $existing = User::factory()->create(['email' => 'ada@example.com']);
+
+    // X sends a confirmed_email (mapped to email) but no email_verified flag.
+    $oauthUser = fakeSocialiteUser(
+        ['id' => 'x-1', 'email' => 'ada@example.com', 'email_verified' => false],
+        'x',
+    );
+
+    $result = app(SocialiteService::class)->loginOrRegister(SocialProvider::X, $oauthUser, null);
+
+    expect($result->user->is($existing))->toBeTrue()
+        ->and($existing->socialAccounts()->where('provider', 'x')->exists())->toBeTrue();
+});
+
+test('callback logs in a new X user via the x driver', function () {
+    config()->set('kit.auth.socialite.providers', ['google', 'x', 'linkedin']);
+    fakeSocialiteUser(['id' => 'x-9', 'email' => 'xnew@example.com', 'email_verified' => false], 'x');
+
+    $this->get('/auth/x/callback')->assertRedirect(route('dashboard'));
+
+    $this->assertAuthenticated();
+    expect(User::where('email', 'xnew@example.com')->exists())->toBeTrue();
+});
+
+test('callback logs in a new LinkedIn user via the linkedin-openid driver', function () {
+    config()->set('kit.auth.socialite.providers', ['google', 'x', 'linkedin']);
+    fakeSocialiteUser(['id' => 'li-9', 'email' => 'linew@example.com'], 'linkedin-openid');
+
+    $this->get('/auth/linkedin/callback')->assertRedirect(route('dashboard'));
+
+    $this->assertAuthenticated();
+    expect(User::where('email', 'linew@example.com')
+        ->whereHas('socialAccounts', fn ($q) => $q->where('provider', 'linkedin'))
+        ->exists())->toBeTrue();
+});
+
+test('login redirect targets the auth callback url, not the connect callback', function () {
+    config()->set('kit.auth.socialite.providers', ['google', 'x']);
+    config()->set('services.x.redirect', 'https://app.test/accounts/callback/x');
+
+    $provider = Mockery::mock(AbstractProvider::class);
+    $provider->shouldReceive('redirectUrl')
+        ->once()
+        ->with(route('auth.socialite.callback', 'x'))
+        ->andReturnSelf();
+    $provider->shouldReceive('redirect')
+        ->andReturn(redirect('https://x.com/i/oauth2/authorize'));
+
+    Socialite::shouldReceive('driver')->with('x')->andReturn($provider);
+
+    $this->get('/auth/x/redirect')->assertRedirect('https://x.com/i/oauth2/authorize');
+});
+
+test('login and register pages expose x and linkedin when enabled', function () {
+    config()->set('kit.auth.socialite.providers', ['google', 'x', 'linkedin']);
+
+    $expected = [
+        ['provider' => 'google', 'label' => 'Google'],
+        ['provider' => 'x', 'label' => 'X'],
+        ['provider' => 'linkedin', 'label' => 'LinkedIn'],
+    ];
+
+    $this->get(route('login'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('auth/login')
+            ->where('providers', $expected),
+        );
 });

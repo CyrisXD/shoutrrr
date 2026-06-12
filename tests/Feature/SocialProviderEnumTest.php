@@ -43,3 +43,19 @@ test('enabledProviders is empty when socialite is disabled', function () {
 
     expect(SocialProvider::enabledProviders())->toBe([]);
 });
+
+test('x and linkedin resolve with their labels when enabled', function () {
+    config()->set('kit.auth.socialite.enabled', true);
+    config()->set('kit.auth.socialite.providers', ['google', 'x', 'linkedin']);
+
+    expect(SocialProvider::fromEnabled('x'))->toBe(SocialProvider::X)
+        ->and(SocialProvider::X->label())->toBe('X')
+        ->and(SocialProvider::fromEnabled('linkedin'))->toBe(SocialProvider::LinkedIn)
+        ->and(SocialProvider::LinkedIn->label())->toBe('LinkedIn');
+});
+
+test('socialite driver names map the enum value to the backing driver', function () {
+    expect(SocialProvider::Google->socialiteDriver())->toBe('google')
+        ->and(SocialProvider::X->socialiteDriver())->toBe('x')
+        ->and(SocialProvider::LinkedIn->socialiteDriver())->toBe('linkedin-openid');
+});

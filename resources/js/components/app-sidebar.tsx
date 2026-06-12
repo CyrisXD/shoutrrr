@@ -1,5 +1,11 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid, Settings } from 'lucide-react';
+import {
+    BookOpen,
+    FolderGit2,
+    LayoutGrid,
+    Settings,
+    Share2,
+} from 'lucide-react';
 
 import WorkspaceSettingsController from '@/actions/App/Http/Controllers/Settings/WorkspaceSettingsController';
 import AppLogo from '@/components/app-logo';
@@ -17,6 +23,7 @@ import {
 } from '@/components/ui/sidebar';
 import { WorkspaceSelector } from '@/components/workspace-selector';
 import { dashboard } from '@/routes';
+import { index as accountsRoute } from '@/routes/accounts';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -24,6 +31,11 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Accounts',
+        href: accountsRoute(),
+        icon: Share2,
     },
 ];
 

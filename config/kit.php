@@ -17,6 +17,7 @@ return [
                     'workspace.users.manage',
                     'workspace.settings.manage',
                     'workspace.billing.manage',
+                    'workspace.accounts.manage',
                 ],
             ],
             'admin' => [
@@ -26,6 +27,7 @@ return [
                     'workspace.users.manage',
                     'workspace.settings.manage',
                     'workspace.billing.manage',
+                    'workspace.accounts.manage',
                 ],
             ],
             'member' => [

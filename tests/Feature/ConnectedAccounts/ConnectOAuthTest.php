@@ -1,0 +1,173 @@
+<?php
+
+use App\Enums\ConnectedAccountStatus;
+use App\Enums\Platform;
+use App\Enums\WorkspaceRole;
+use App\Models\ConnectedAccount;
+use App\Models\User;
+use App\Models\Workspace;
+use App\Models\WorkspaceMembership;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\AbstractProvider;
+use Laravel\Socialite\Two\User as SocialiteUser;
+
+function ownerActingIn(): array
+{
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
+    WorkspaceMembership::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'role' => WorkspaceRole::Owner,
+    ]);
+    $user->forceFill(['current_workspace_id' => $workspace->id])->save();
+    test()->actingAs($user);
+
+    return [$user, $workspace];
+}
+
+function fakeOAuthUser(string $driver, array $data): SocialiteUser
+{
+    $user = (new SocialiteUser)
+        ->map([
+            'id' => $data['id'],
+            'nickname' => $data['nickname'] ?? null,
+            'name' => $data['name'] ?? null,
+            'avatar' => $data['avatar'] ?? null,
+        ])
+        ->setToken($data['token'] ?? 'tok');
+
+    if (array_key_exists('refreshToken', $data) && $data['refreshToken'] !== null) {
+        $user->setRefreshToken($data['refreshToken']);
+    }
+
+    if (array_key_exists('expiresIn', $data) && $data['expiresIn'] !== null) {
+        $user->setExpiresIn($data['expiresIn']);
+    }
+
+    $provider = Mockery::mock(AbstractProvider::class);
+    $provider->shouldReceive('setScopes')->andReturnSelf();
+    $provider->shouldReceive('redirectUrl')->andReturnSelf();
+    $provider->shouldReceive('redirect')->andReturn(redirect('https://provider.test/oauth'));
+    $provider->shouldReceive('user')->andReturn($user);
+
+    Socialite::shouldReceive('driver')->with($driver)->andReturn($provider);
+
+    return $user;
+}
+
+test('redirect sends an owner to the X provider when configured', function () {
+    config()->set('services.x.client_id', 'cid');
+    config()->set('services.x.client_secret', 'secret');
+    config()->set('services.x.redirect', 'https://app.test/accounts/callback/x');
+    ownerActingIn();
+    fakeOAuthUser('x', ['id' => 'x-1']);
+
+    test()->get('/accounts/connect/x')->assertRedirect('https://provider.test/oauth');
+});
+
+test('redirect 404s for an unconfigured platform', function () {
+    config()->set('services.x.client_id', null);
+    config()->set('services.x.client_secret', null);
+    ownerActingIn();
+
+    test()->get('/accounts/connect/x')->assertNotFound();
+});
+
+test('redirect 404s for an unknown or app-password platform', function () {
+    ownerActingIn();
+    test()->get('/accounts/connect/bluesky')->assertNotFound();
+    test()->get('/accounts/connect/myspace')->assertNotFound();
+});
+
+test('callback persists an active X account with an encrypted token', function () {
+    config()->set('services.x.client_id', 'cid');
+    config()->set('services.x.client_secret', 'secret');
+    config()->set('services.x.redirect', 'https://app.test/accounts/callback/x');
+    [$user, $workspace] = ownerActingIn();
+    fakeOAuthUser('x', [
+        'id' => 'x-99',
+        'nickname' => 'ada',
+        'name' => 'Ada',
+        'avatar' => 'https://x/a.png',
+        'token' => 'access',
+        'refreshToken' => 'refresh',
+        'expiresIn' => 7200,
+    ]);
+
+    test()->get('/accounts/callback/x')->assertRedirect(route('accounts.index'));
+
+    $account = ConnectedAccount::withoutGlobalScopes()->firstWhere('remote_account_id', 'x-99');
+    expect($account)->not->toBeNull()
+        ->and($account->platform)->toBe(Platform::X)
+        ->and($account->status)->toBe(ConnectedAccountStatus::Active)
+        ->and($account->handle)->toBe('@ada')
+        ->and($account->workspace_id)->toBe($workspace->id)
+        ->and($account->secret->access_token)->toBe('access');
+});
+
+test('callback maps a linkedin-openid user', function () {
+    config()->set('services.linkedin-openid.client_id', 'cid');
+    config()->set('services.linkedin-openid.client_secret', 'secret');
+    config()->set('services.linkedin-openid.redirect', 'https://app.test/accounts/callback/linkedin');
+    ownerActingIn();
+    fakeOAuthUser('linkedin-openid', [
+        'id' => 'sub-1',
+        'nickname' => null,
+        'name' => 'Grace Hopper',
+        'expiresIn' => 5184000,
+    ]);
+
+    test()->get('/accounts/callback/linkedin')->assertRedirect(route('accounts.index'));
+
+    $account = ConnectedAccount::withoutGlobalScopes()->firstWhere('remote_account_id', 'sub-1');
+    expect($account->platform)->toBe(Platform::LinkedIn)
+        ->and($account->handle)->toBe('Grace Hopper')
+        ->and($account->token_expires_at)->not->toBeNull();
+});
+
+test('a member is forbidden from connecting', function () {
+    config()->set('services.x.client_id', 'cid');
+    config()->set('services.x.client_secret', 'secret');
+    config()->set('services.x.redirect', 'https://app.test/accounts/callback/x');
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
+    WorkspaceMembership::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'role' => WorkspaceRole::Member,
+    ]);
+    $user->forceFill(['current_workspace_id' => $workspace->id])->save();
+
+    test()->actingAs($user)->get('/accounts/connect/x')->assertForbidden();
+});
+
+test('callback surfaces a friendly message when the user declines on the provider', function () {
+    config()->set('services.x.client_id', 'cid');
+    config()->set('services.x.client_secret', 'secret');
+    ownerActingIn();
+
+    test()->get('/accounts/callback/x?error=access_denied')
+        ->assertRedirect(route('accounts.index'))
+        ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'declined')
+            && str_contains($message, 'X'));
+
+    expect(ConnectedAccount::withoutGlobalScopes()->count())->toBe(0);
+});
+
+test('callback maps a scope failure to a friendly permission message', function () {
+    config()->set('services.x.client_id', 'cid');
+    config()->set('services.x.client_secret', 'secret');
+    ownerActingIn();
+
+    $provider = Mockery::mock(AbstractProvider::class);
+    $provider->shouldReceive('redirectUrl')->andReturnSelf();
+    $provider->shouldReceive('user')->andThrow(new RuntimeException('Missing required OAuth2 scopes: users.email'));
+    Socialite::shouldReceive('driver')->with('x')->andReturn($provider);
+
+    test()->get('/accounts/callback/x')
+        ->assertRedirect(route('accounts.index'))
+        ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'permission'));
+
+    expect(ConnectedAccount::withoutGlobalScopes()->count())->toBe(0);
+});

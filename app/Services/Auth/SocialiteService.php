@@ -53,7 +53,7 @@ class SocialiteService
         $byEmail = User::where('email', $email)->first();
 
         if ($byEmail) {
-            if (! $this->providerEmailIsVerified($oauthUser)) {
+            if (! $this->providerEmailIsVerified($provider, $oauthUser)) {
                 throw SocialAuthException::emailTaken($provider->label());
             }
 
@@ -71,7 +71,7 @@ class SocialiteService
                     'password' => null,
                 ]);
 
-                if ($this->providerEmailIsVerified($oauthUser)) {
+                if ($this->providerEmailIsVerified($provider, $oauthUser)) {
                     $user->forceFill(['email_verified_at' => now()])->save();
                 }
 
@@ -149,13 +149,17 @@ class SocialiteService
      * property (see `Laravel\Socialite\AbstractUser`), so we read it
      * dynamically via `data_get()` rather than depending on a concrete class.
      *
-     * The `email_verified` key matches Google's OpenID payload. A missing or
-     * falsy value is treated as unverified — which is the safe default. When
-     * adding a provider that names this flag differently (e.g. some providers
-     * omit it entirely), make this resolution provider-aware.
+     * The `email_verified` key matches Google's and LinkedIn's OpenID payloads.
+     * X (OAuth 2.0) does not send that flag — it returns a `confirmed_email`,
+     * which Socialite maps onto the user's email, so a present email means X has
+     * already confirmed it. A missing or falsy value is treated as unverified.
      */
-    private function providerEmailIsVerified(SocialiteUser $oauthUser): bool
+    private function providerEmailIsVerified(SocialProvider $provider, SocialiteUser $oauthUser): bool
     {
+        if ($provider === SocialProvider::X) {
+            return $oauthUser->getEmail() !== null && $oauthUser->getEmail() !== '';
+        }
+
         return filter_var(
             data_get($oauthUser, 'user.email_verified', false),
             FILTER_VALIDATE_BOOL,

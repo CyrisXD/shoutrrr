@@ -6,12 +6,14 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
+use Override;
 
 /**
  * @extends Factory<Workspace>
  */
 class WorkspaceFactory extends Factory
 {
+    #[Override]
     protected $model = Workspace::class;
 
     public function definition(): array

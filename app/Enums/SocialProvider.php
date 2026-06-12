@@ -7,6 +7,8 @@ namespace App\Enums;
 enum SocialProvider: string
 {
     case Google = 'google';
+    case X = 'x';
+    case LinkedIn = 'linkedin';
 
     /**
      * Resolve a provider from a route/key value, returning null when the
@@ -65,6 +67,21 @@ enum SocialProvider: string
     {
         return match ($this) {
             self::Google => 'Google',
+            self::X => 'X',
+            self::LinkedIn => 'LinkedIn',
+        };
+    }
+
+    /**
+     * The Socialite driver backing this provider. Usually identical to the enum
+     * value, but LinkedIn uses the modern OpenID Connect driver, whose key
+     * (`linkedin-openid`) differs from the clean route/DB token (`linkedin`).
+     */
+    public function socialiteDriver(): string
+    {
+        return match ($this) {
+            self::LinkedIn => 'linkedin-openid',
+            default => $this->value,
         };
     }
 }

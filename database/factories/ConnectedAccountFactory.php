@@ -1,0 +1,52 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Enums\ConnectedAccountStatus;
+use App\Enums\Platform;
+use App\Models\ConnectedAccount;
+use App\Models\User;
+use App\Models\Workspace;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends Factory<ConnectedAccount>
+ */
+class ConnectedAccountFactory extends Factory
+{
+    /**
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        return [
+            'workspace_id' => Workspace::factory(),
+            'platform' => Platform::X->value,
+            'handle' => '@'.fake()->unique()->userName(),
+            'display_name' => fake()->name(),
+            'avatar_url' => fake()->imageUrl(),
+            'remote_account_id' => (string) fake()->unique()->numerify('##########'),
+            'auth_method' => 'oauth',
+            'connected_by_user_id' => User::factory(),
+            'status' => ConnectedAccountStatus::Active->value,
+            'token_expires_at' => null,
+            'last_refreshed_at' => null,
+        ];
+    }
+
+    public function bluesky(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'platform' => Platform::Bluesky->value,
+            'auth_method' => 'app_password',
+            'remote_account_id' => 'did:plc:'.fake()->unique()->bothify('??????????'),
+        ]);
+    }
+
+    public function needsAttention(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'status' => ConnectedAccountStatus::NeedsAttention->value,
+        ]);
+    }
+}

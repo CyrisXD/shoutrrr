@@ -7,12 +7,14 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Override;
 
 /**
  * @extends Factory<WorkspaceInvitation>
  */
 class WorkspaceInvitationFactory extends Factory
 {
+    #[Override]
     protected $model = WorkspaceInvitation::class;
 
     public function definition(): array
