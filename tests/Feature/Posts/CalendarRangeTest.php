@@ -22,10 +22,15 @@ beforeEach(function (): void {
     Context::add('workspace_id', $this->workspace->id);
 });
 
+it('exposes the calendar at its own top-level endpoint', function (): void {
+    expect(route('calendar.index', absolute: false))->toBe('/calendar');
+    expect(route('calendar.month', ['yyyymm' => '2026-06'], absolute: false))->toBe('/calendar/2026-06');
+});
+
 it('bare calendar redirects to the current month', function (): void {
     $this->actingAs($this->user)
-        ->get(route('posts.calendar'))
-        ->assertRedirect(route('posts.calendar.month', ['yyyymm' => now()->format('Y-m')]));
+        ->get(route('calendar.index'))
+        ->assertRedirect(route('calendar.month', ['yyyymm' => now()->format('Y-m')]));
 });
 
 it('returns scheduled + published posts whose date falls in the visible window', function (): void {
@@ -42,7 +47,7 @@ it('returns scheduled + published posts whose date falls in the visible window',
     ]); // no date → excluded
 
     $this->actingAs($this->user)
-        ->get(route('posts.calendar.month', ['yyyymm' => '2026-06']))
+        ->get(route('calendar.month', ['yyyymm' => '2026-06']))
         ->assertInertia(fn ($page) => $page
             ->component('posts/calendar/index')
             ->has('posts', 2)

@@ -17,8 +17,8 @@ import { dayjs, parseYm, ymKey } from '@/lib/datetime/dayjs';
 import type { Dayjs } from '@/lib/datetime/dayjs';
 import type { PostRowData } from '@/pages/posts/post-row';
 import { dashboard } from '@/routes';
+import { month as calendarMonth } from '@/routes/calendar';
 import { schedule } from '@/routes/posts';
-import { month as calendarMonth } from '@/routes/posts/calendar';
 
 import { CalendarHeader } from './calendar-header';
 import { MonthGrid, computeMonthDrop } from './month-grid';
@@ -273,7 +273,7 @@ CalendarIndex.layout = {
     breadcrumbs: [
         {
             title: 'Calendar',
-            href: '/posts/calendar',
+            href: '/calendar',
         },
     ],
 };

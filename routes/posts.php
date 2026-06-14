@@ -46,16 +46,15 @@ Route::bind('target', fn (string $value): PostTarget => PostTarget::query()
 Route::bind('share', fn (string $value): PostShare => PostShare::query()->whereKey($value)->firstOrFail());
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
-    Route::get('compose/{post}', [ComposerController::class, 'show'])->name('compose.show');
-    Route::get('posts/calendar', [CalendarController::class, 'redirectToCurrent'])->name('posts.calendar');
-    Route::get('posts/calendar/{yyyymm}', [CalendarController::class, 'show'])
-        ->where('yyyymm', '\d{4}-\d{2}')->name('posts.calendar.month');
+    Route::get('calendar', [CalendarController::class, 'redirectToCurrent'])->name('calendar.index');
+    Route::get('calendar/{yyyymm}', [CalendarController::class, 'show'])
+        ->where('yyyymm', '\d{4}-\d{2}')->name('calendar.month');
 
     Route::get('posts', [PostController::class, 'index'])->name('posts.index');
 
     Route::post('posts', [PostController::class, 'store'])->name('posts.store');
     Route::put('posts/{post}', [PostController::class, 'update'])->name('posts.update');
-    Route::get('posts/{post}', [PostController::class, 'showJson'])->name('posts.show');
+    Route::get('posts/{post}', [ComposerController::class, 'show'])->name('posts.show');
     Route::delete('posts/{post}', [PostController::class, 'destroy'])->name('posts.destroy');
     Route::put('posts/{post}/schedule', [PostScheduleController::class, 'update'])->name('posts.schedule');
     Route::post('posts/{post}/queue', [PostQueueController::class, 'store'])->name('posts.queue');

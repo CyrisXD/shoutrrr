@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { PostRow, type PostRowData } from '@/pages/posts/post-row';
 import { dashboard } from '@/routes';
+import { index as postsRoute } from '@/routes/posts';
 
 type StatusTab = 'all' | 'scheduled' | 'draft' | 'published';
 
@@ -73,7 +74,7 @@ export default function PostsIndex({ posts, filters, sets }: Props) {
         if (debounceRef.current) {
             clearTimeout(debounceRef.current);
         }
-        router.visit('/posts', {
+        router.visit(postsRoute().url, {
             data: {
                 status: next.status ?? filters.status,
                 set: next.set ?? filters.set,
@@ -293,7 +294,7 @@ PostsIndex.layout = {
     breadcrumbs: [
         {
             title: 'Posts',
-            href: '/posts',
+            href: postsRoute().url,
         },
     ],
 };

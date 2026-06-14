@@ -26,7 +26,8 @@ import {
 import { WorkspaceSelector } from '@/components/workspace-selector';
 import { dashboard } from '@/routes';
 import { index as accountsRoute } from '@/routes/accounts';
-import { calendar as calendarRoute, index as postsRoute } from '@/routes/posts';
+import { index as calendarRoute } from '@/routes/calendar';
+import { index as postsRoute } from '@/routes/posts';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [

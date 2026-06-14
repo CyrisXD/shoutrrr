@@ -85,11 +85,6 @@ class PostController extends Controller
         return response()->json(['post' => PostView::make($updated->fresh(['targets.account', 'media']))]);
     }
 
-    public function showJson(Post $post): JsonResponse
-    {
-        return response()->json(['post' => PostView::make($post->fresh(['targets.account', 'media']))]);
-    }
-
     public function destroy(Request $request, Post $post): RedirectResponse
     {
         $request->user()->can('delete', $post) ?: abort(403);

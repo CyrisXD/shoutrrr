@@ -7,6 +7,7 @@ use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceMembership;
+use Inertia\Testing\AssertableInertia;
 
 function actingMember(int $accounts = 2): array
 {
@@ -77,6 +78,25 @@ test('a user cannot autosave a post in another workspace', function () {
         'base_text' => 'x',
         'destination' => ['kind' => 'all'],
     ])->assertNotFound();
+});
+
+test('GET /posts/{post} renders the composer page for an existing post', function () {
+    [$user, $workspace, $accounts] = actingMember(1);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'base_text' => 'hello']);
+
+    test()->get("/posts/{$post->id}")
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('compose/index')
+            ->where('post.id', $post->id)
+            ->where('post.base_text', 'hello'));
+});
+
+test('the old /compose/{post} URL no longer exists', function () {
+    [$user, $workspace, $accounts] = actingMember(1);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id]);
+
+    test()->get("/compose/{$post->id}")->assertNotFound();
 });
 
 test('DELETE /posts/{post} removes the draft and its targets', function () {

@@ -18,7 +18,7 @@ class CalendarController extends Controller
 {
     public function redirectToCurrent(): RedirectResponse
     {
-        return redirect()->route('posts.calendar.month', ['yyyymm' => now()->format('Y-m')]);
+        return redirect()->route('calendar.month', ['yyyymm' => now()->format('Y-m')]);
     }
 
     public function show(Request $request, string $yyyymm): Response
