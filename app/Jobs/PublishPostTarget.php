@@ -11,6 +11,9 @@ use App\Enums\PostTargetStatus;
 use App\Exceptions\TokenRefreshException;
 use App\Models\PostTarget;
 use App\Models\PostTargetAttempt;
+use App\Notifications\AccountNeedsAttentionNotification;
+use App\Notifications\PostPublishedNotification;
+use App\Notifications\PublishFailedNotification;
 use App\Services\Publishing\BackoffSchedule;
 use App\Services\Publishing\PostStatusRollup;
 use App\Services\Publishing\PublishConnectorRegistry;
@@ -136,6 +139,41 @@ class PublishPostTarget implements ShouldQueue
         );
     }
 
+    /**
+     * Notify the post author that a target published successfully.
+     */
+    public function notifyPublished(PostTarget $target): void
+    {
+        $author = $target->post()->firstOrFail()->author()->first();
+
+        $author?->notify(new PostPublishedNotification($target));
+    }
+
+    /**
+     * Notify the post author about a terminal failure. Auth-expiry routes to the
+     * reconnect notification; everything else to the publish-failed notification.
+     */
+    public function notifyFailed(PostTarget $target, ErrorKind $kind): void
+    {
+        $post = $target->post()->firstOrFail();
+        $author = $post->author()->first();
+
+        if ($author === null) {
+            return;
+        }
+
+        if ($kind === ErrorKind::AuthExpired) {
+            $author->notify(new AccountNeedsAttentionNotification(
+                $target->account()->firstOrFail(),
+                $post->workspace_id,
+            ));
+
+            return;
+        }
+
+        $author->notify(new PublishFailedNotification($target));
+    }
+
     private function onSuccess(PostTarget $target, PostTargetAttempt $attempt, PublishResult $result): void
     {
         $target->forceFill([
@@ -153,6 +191,8 @@ class PublishPostTarget implements ShouldQueue
             'http_status' => $result->httpStatus,
             'finished_at' => Date::now(),
         ])->save();
+
+        $this->notifyPublished($target);
     }
 
     private function onFailure(PostTarget $target, PostTargetAttempt $attempt, PublishResult $result, BackoffSchedule $backoff): void
@@ -190,5 +230,7 @@ class PublishPostTarget implements ShouldQueue
             'error_message' => $result->errorMessage,
             'next_attempt_at' => null,
         ])->save();
+
+        $this->notifyFailed($target, $kind);
     }
 }

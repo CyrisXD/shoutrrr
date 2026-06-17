@@ -8,6 +8,7 @@ use App\Models\AccountSet;
 use App\Models\ConnectedAccount;
 use App\Models\User;
 use App\Models\WorkspaceMembership;
+use App\Support\Notifications\NotificationPresenter;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Override;
@@ -61,6 +62,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
+            'notifications' => $this->notificationsData($request->user()),
         ];
     }
 
@@ -149,5 +151,17 @@ class HandleInertiaRequests extends Middleware
             'current' => $current,
             'canCreateWorkspaces' => (bool) config('kit.workspaces.can_create_workspaces'),
         ];
+    }
+
+    /**
+     * @return array{items: array<int, array<string, mixed>>, unreadCount: int}
+     */
+    private function notificationsData(?User $user): array
+    {
+        if ($user === null) {
+            return ['items' => [], 'unreadCount' => 0];
+        }
+
+        return NotificationPresenter::collection($user, $user->current_workspace_id);
     }
 }

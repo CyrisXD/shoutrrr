@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Settings\ConnectionsController;
+use App\Http\Controllers\Settings\NotificationPreferencesController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\WorkspaceSettingsController;
@@ -24,6 +25,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('settings/connections', [ConnectionsController::class, 'edit'])->name('connections.edit');
     Route::delete('settings/connections/{socialAccount}', [ConnectionsController::class, 'destroy'])->name('connections.destroy');
+
+    Route::get('settings/notifications', [NotificationPreferencesController::class, 'edit'])->name('notifications.preferences');
+    Route::put('settings/notifications', [NotificationPreferencesController::class, 'update'])->name('notifications.preferences.update');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

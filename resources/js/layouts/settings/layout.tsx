@@ -8,6 +8,7 @@ import { useCurrentUrl } from '@/hooks/use-current-url';
 import { cn, toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editConnections } from '@/routes/connections';
+import { preferences as notificationPreferences } from '@/routes/notifications';
 import { edit } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import type { NavItem } from '@/types';
@@ -40,6 +41,11 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
         {
             title: 'Appearance',
             href: editAppearance(),
+            icon: null,
+        },
+        {
+            title: 'Notifications',
+            href: notificationPreferences(),
             icon: null,
         },
     ];

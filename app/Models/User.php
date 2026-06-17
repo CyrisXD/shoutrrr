@@ -3,7 +3,9 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Casts\NotificationPreferencesCast;
 use App\Enums\SocialProvider;
+use App\Support\Notifications\NotificationPreferences;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -33,8 +35,9 @@ use Override;
  * @property string|null $remember_token
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property NotificationPreferences|null $notification_preferences
  */
-#[Fillable(['name', 'email', 'password', 'current_workspace_id'])]
+#[Fillable(['name', 'email', 'password', 'current_workspace_id', 'notification_preferences'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements OAuthenticatable, PasskeyUser
 {
@@ -53,6 +56,7 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'notification_preferences' => NotificationPreferencesCast::class,
         ];
     }
 
@@ -113,6 +117,11 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
     public function isMemberOfWorkspace(?string $workspaceId): bool
     {
         return $this->getMembershipForWorkspace($workspaceId) !== null;
+    }
+
+    public function notificationPreferences(): NotificationPreferences
+    {
+        return $this->notification_preferences ?? NotificationPreferences::defaults();
     }
 
     public function isOwnerOfWorkspace(?string $workspaceId): bool

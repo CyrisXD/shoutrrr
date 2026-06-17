@@ -1,5 +1,6 @@
-import { Link } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Bell } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -8,27 +9,41 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-
-export type AppNotification = {
-    id: string;
-    title: string;
-    body?: string;
-    href?: string;
-    read: boolean;
-    /** Human-readable relative time, e.g. "2h ago". */
-    timeLabel: string;
-};
-
-/*
- * No notifications backend exists yet — this is the UI shell. When it lands,
- * source `notifications` from shared Inertia props (usePage().props) and wire
- * `Mark all read` + per-row activation to their endpoints. Everything else
- * (badge, popover, list rows, empty state) is already in place.
- */
-const notifications: AppNotification[] = [];
+import {
+    read as markRead,
+    readAll as markAllRead,
+} from '@/routes/notifications';
+import type { NotificationItem } from '@/types/notifications';
 
 export function NotificationBell() {
-    const unread = notifications.filter((n) => !n.read).length;
+    const { notifications } = usePage().props;
+    const [items, setItems] = useState<NotificationItem[]>(notifications.items);
+
+    useEffect(() => {
+        setItems(notifications.items);
+    }, [notifications.items]);
+
+    const unread = items.filter((n) => !n.read).length;
+
+    function markOneRead(id: string) {
+        setItems((prev) =>
+            prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+        );
+        router.post(
+            markRead(id).url,
+            {},
+            { preserveScroll: true, preserveState: true },
+        );
+    }
+
+    function markEverythingRead() {
+        setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+        router.post(
+            markAllRead().url,
+            {},
+            { preserveScroll: true, preserveState: true },
+        );
+    }
 
     return (
         <Popover>
@@ -61,13 +76,14 @@ export function NotificationBell() {
                         size="sm"
                         className="h-6 px-2 text-[12px]"
                         disabled={unread === 0}
+                        onClick={markEverythingRead}
                     >
                         Mark all read
                     </Button>
                 </div>
 
                 <div className="max-h-96 overflow-y-auto">
-                    {notifications.length === 0 ? (
+                    {items.length === 0 ? (
                         <div className="flex flex-col items-center gap-2 px-3 py-10 text-center">
                             <span className="grid size-9 place-items-center rounded-full bg-muted text-muted-foreground">
                                 <Bell className="size-4" />
@@ -77,10 +93,11 @@ export function NotificationBell() {
                             </p>
                         </div>
                     ) : (
-                        notifications.map((notification) => (
+                        items.map((notification) => (
                             <NotificationRow
                                 key={notification.id}
                                 notification={notification}
+                                onRead={markOneRead}
                             />
                         ))
                     )}
@@ -90,7 +107,13 @@ export function NotificationBell() {
     );
 }
 
-function NotificationRow({ notification }: { notification: AppNotification }) {
+function NotificationRow({
+    notification,
+    onRead,
+}: {
+    notification: NotificationItem;
+    onRead: (id: string) => void;
+}) {
     const body = (
         <div className="flex gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-muted/50">
             <span
@@ -121,11 +144,29 @@ function NotificationRow({ notification }: { notification: AppNotification }) {
             <Link
                 href={notification.href}
                 className="block border-b border-border last:border-b-0"
+                onClick={() => onRead(notification.id)}
             >
                 {body}
             </Link>
         );
     }
 
-    return <div className="border-b border-border last:border-b-0">{body}</div>;
+    return (
+        <div
+            role="button"
+            tabIndex={0}
+            className="border-b border-border last:border-b-0"
+            onClick={() => onRead(notification.id)}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    if (e.key === ' ') {
+                        e.preventDefault();
+                    }
+                    onRead(notification.id);
+                }
+            }}
+        >
+            {body}
+        </div>
+    );
 }

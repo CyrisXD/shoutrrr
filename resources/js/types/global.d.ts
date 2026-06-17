@@ -4,6 +4,7 @@ import type {
     PlatformLimits,
 } from '@/pages/compose/types';
 import type { Auth } from '@/types/auth';
+import type { NotificationsData } from '@/types/notifications';
 import type { FlashData, WorkspacesData } from '@/types/workspace';
 
 declare module 'react' {
@@ -27,6 +28,7 @@ declare module '@inertiajs/core' {
                 sets: AccountSet[];
                 limits: PlatformLimits[];
             };
+            notifications: NotificationsData;
             [key: string]: unknown;
         };
     }

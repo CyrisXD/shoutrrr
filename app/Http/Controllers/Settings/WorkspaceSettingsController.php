@@ -13,7 +13,7 @@ use App\Models\PostingSchedule;
 use App\Models\User;
 use App\Models\WorkspaceInvitation;
 use App\Models\WorkspaceMembership;
-use App\Notifications\WorkspaceInvitationNotification;
+use App\Notifications\WorkspaceInviteNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
@@ -129,8 +129,14 @@ class WorkspaceSettingsController extends Controller
             'expires_at' => now()->addDays((int) config('kit.workspaces.invitation_ttl_days')),
         ]);
 
-        Notification::route('mail', $invitation->email)
-            ->notify(new WorkspaceInvitationNotification($invitation, $plain));
+        $existingUser = User::query()->where('email', $invitation->email)->first();
+
+        if ($existingUser !== null) {
+            $existingUser->notify(new WorkspaceInviteNotification($invitation, $plain));
+        } else {
+            Notification::route('mail', $invitation->email)
+                ->notify(new WorkspaceInviteNotification($invitation, $plain));
+        }
 
         return back()->with('success', 'Invitation sent.');
     }

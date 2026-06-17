@@ -1,5 +1,6 @@
 import PublicShareController from './PublicShareController'
 import DashboardController from './DashboardController'
+import NotificationController from './NotificationController'
 import WorkspaceController from './WorkspaceController'
 import Auth from './Auth'
 import Settings from './Settings'
@@ -10,6 +11,7 @@ import AccountSets from './AccountSets'
 const Controllers = {
     PublicShareController: Object.assign(PublicShareController, PublicShareController),
     DashboardController: Object.assign(DashboardController, DashboardController),
+    NotificationController: Object.assign(NotificationController, NotificationController),
     WorkspaceController: Object.assign(WorkspaceController, WorkspaceController),
     Auth: Object.assign(Auth, Auth),
     Settings: Object.assign(Settings, Settings),

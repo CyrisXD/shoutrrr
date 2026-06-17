@@ -4,6 +4,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
 use App\Models\WorkspaceMembership;
+use App\Notifications\WorkspaceInviteNotification;
 use Illuminate\Support\Facades\Notification;
 
 /**
@@ -68,4 +69,32 @@ test('owner can cancel a pending invitation', function () {
     $this->actingAs($owner)->delete(route('settings.workspace.invitations.cancel', $invitation))->assertRedirect();
 
     $this->assertDatabaseMissing('workspace_invitations', ['id' => $invitation->id]);
+});
+
+test('inviting an existing user sends an in-app notification to that user', function () {
+    Notification::fake();
+    [$workspace, $owner] = ownerInWorkspace();
+    $existingUser = User::factory()->create(['email' => 'existing@example.com']);
+
+    $this->actingAs($owner)->post(route('settings.workspace.invite'), [
+        'email' => 'existing@example.com',
+        'role' => 'member',
+    ])->assertRedirect();
+
+    Notification::assertSentTo($existingUser, WorkspaceInviteNotification::class);
+});
+
+test('inviting an unknown email sends an on-demand mail notification without a model notification', function () {
+    Notification::fake();
+    [$workspace, $owner] = ownerInWorkspace();
+
+    $this->actingAs($owner)->post(route('settings.workspace.invite'), [
+        'email' => 'unknown@example.com',
+        'role' => 'member',
+    ])->assertRedirect();
+
+    Notification::assertSentOnDemand(WorkspaceInviteNotification::class);
+
+    $noMatchingUser = User::query()->where('email', 'unknown@example.com')->first();
+    expect($noMatchingUser)->toBeNull();
 });

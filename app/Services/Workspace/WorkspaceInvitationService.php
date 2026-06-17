@@ -8,6 +8,7 @@ use App\Dto\Workspace\InvitationAcceptanceResult;
 use App\Models\User;
 use App\Models\WorkspaceInvitation;
 use App\Models\WorkspaceMembership;
+use App\Notifications\WorkspaceInviteAcceptedNotification;
 use Illuminate\Support\Facades\DB;
 
 class WorkspaceInvitationService
@@ -59,6 +60,10 @@ class WorkspaceInvitationService
             $user->save();
             $invitation->markAsAccepted();
         });
+
+        $inviter = $invitation->inviter()->first();
+
+        $inviter?->notify(new WorkspaceInviteAcceptedNotification($invitation, $user));
 
         return new InvitationAcceptanceResult(true, 'Successfully joined the workspace!', 'success');
     }
