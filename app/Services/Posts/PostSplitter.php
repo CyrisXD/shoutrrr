@@ -91,7 +91,16 @@ class PostSplitter
     }
 
     /**
-     * Greedily pack words into sections no longer than the platform limit.
+     * Pack whole paragraphs into sections no longer than the platform limit,
+     * mirroring the composer's paragraph-aware preview (`deriveSectionMap`).
+     *
+     * Paragraphs (newline-separated blocks of the canonical base text) are the
+     * atomic unit: a paragraph joins the current section while the joined text
+     * still fits, otherwise it starts a fresh one. We never split mid-paragraph
+     * here, so the published sections match the thread markers the user sees.
+     * The one exception is a single paragraph that alone exceeds the limit — it
+     * cannot be posted whole, so it is broken on word (then character)
+     * boundaries.
      *
      * @return list<string>
      */
@@ -102,7 +111,61 @@ class PostSplitter
         }
 
         $limit = $platform->maxLength();
-        $words = preg_split('/\s+/', $segment) ?: [$segment];
+
+        $sections = [];
+        $current = '';
+        $hasCurrent = false;
+
+        foreach (explode("\n", $segment) as $paragraph) {
+            // A paragraph that cannot stand on its own is broken further. Flush
+            // whatever is buffered first so section order is preserved.
+            if ($platform->measure($paragraph) > $limit) {
+                if ($hasCurrent) {
+                    $sections[] = $current;
+                    $current = '';
+                    $hasCurrent = false;
+                }
+
+                foreach ($this->splitParagraph($paragraph, $platform) as $piece) {
+                    $sections[] = $piece;
+                }
+
+                continue;
+            }
+
+            $candidate = $hasCurrent ? $current."\n".$paragraph : $paragraph;
+
+            if (! $hasCurrent || $platform->measure($candidate) <= $limit) {
+                $current = $candidate;
+                $hasCurrent = true;
+
+                continue;
+            }
+
+            // Adding this paragraph overflows the section — close it and start a
+            // new one with the paragraph intact.
+            $sections[] = $current;
+            $current = $paragraph;
+            $hasCurrent = true;
+        }
+
+        if ($hasCurrent) {
+            $sections[] = $current;
+        }
+
+        return $sections === [] ? [''] : $sections;
+    }
+
+    /**
+     * Break a single over-limit paragraph: greedily pack words, then hard-split
+     * any single word that still exceeds the limit.
+     *
+     * @return list<string>
+     */
+    private function splitParagraph(string $paragraph, Platform $platform): array
+    {
+        $limit = $platform->maxLength();
+        $words = preg_split('/\s+/', trim($paragraph)) ?: [$paragraph];
 
         $chunks = [];
         $current = '';
@@ -135,7 +198,7 @@ class PostSplitter
             $chunks[] = $current;
         }
 
-        return $chunks;
+        return $chunks === [] ? [''] : $chunks;
     }
 
     /**

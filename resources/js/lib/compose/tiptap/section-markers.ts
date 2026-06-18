@@ -3,6 +3,7 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 
+import { measure, packSections } from '@/lib/compose/section-split';
 import type { PlatformName } from '@/types/compose';
 
 /**
@@ -45,16 +46,6 @@ const DEFAULT_STATE: MarkerState = {
     threadMax: null,
 };
 
-/**
- * Client-side mirror of the active platform's length measure. X counts UTF-16
- * code units (JS string length); the others approximate with code points. The
- * server's grapheme/byte count remains authoritative.
- */
-function measure(text: string, platform: PlatformName): number {
-    // oxlint-disable-next-line no-misused-spread -- intentional code-point count
-    return platform === 'x' ? text.length : [...text].length;
-}
-
 interface SectionMap {
     boundaryAfter: number[];
     sectionCount: number[];
@@ -62,41 +53,27 @@ interface SectionMap {
 }
 
 /**
- * Paragraph-aware greedy split. Each paragraph either joins the current section
- * (when `current + "\n\n" + para` fits in `limit`) or starts a fresh one. A
- * paragraph that alone exceeds `limit` becomes a single overflowing section — we
- * never split mid-paragraph, so markers always sit on paragraph boundaries.
+ * Adapt the shared `packSections` output into the marker positions the plugin
+ * needs: the paragraph index each section closes after (`boundaryAfter`), each
+ * section's measured length (`sectionCount`), and the total section count.
  */
 function deriveSectionMap(
     paragraphs: string[],
     platform: PlatformName,
     limit: number,
 ): SectionMap {
+    const sections = packSections(paragraphs, platform, limit);
     const boundaryAfter: number[] = [];
     const sectionCount: number[] = [];
 
-    let cur = '';
-    let secIdx = 1;
-
-    for (let i = 0; i < paragraphs.length; i++) {
-        const para = paragraphs[i] ?? '';
-        const joined = cur === '' ? para : `${cur}\n\n${para}`;
-
-        if (cur === '' || measure(joined, platform) <= limit) {
-            cur = joined;
-
-            continue;
+    sections.forEach((section, i) => {
+        sectionCount.push(measure(section.text, platform));
+        if (i < sections.length - 1) {
+            boundaryAfter.push(section.paraIndices.at(-1) ?? 0);
         }
+    });
 
-        sectionCount.push(measure(cur, platform));
-        boundaryAfter.push(i - 1);
-        secIdx += 1;
-        cur = para;
-    }
-
-    sectionCount.push(measure(cur, platform));
-
-    return { boundaryAfter, sectionCount, totalSections: secIdx };
+    return { boundaryAfter, sectionCount, totalSections: sections.length };
 }
 
 function makeMarkerDom(
