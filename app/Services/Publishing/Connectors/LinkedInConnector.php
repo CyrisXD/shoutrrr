@@ -29,7 +29,7 @@ class LinkedInConnector implements PublishConnector
      * Recent LinkedIn versioned-API month. LinkedIn sunsets versions roughly 12 months
      * after release, so this is the configurable default rather than a hardcoded constant.
      */
-    public const string DEFAULT_VERSION = '202505';
+    public const string DEFAULT_VERSION = '202605';
 
     public function __construct(private readonly HttpFactory $http) {}
 
