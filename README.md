@@ -1,50 +1,153 @@
-# Laravel + React Starter Kit
+<div align="center">
 
-A batteries-included starting point for building Laravel applications with a React frontend via [Inertia](https://inertiajs.com). It builds on Laravel's official React starter kit and layers on multi-tenancy, a fuller auth surface, social login, a production container image, and a modern tooling chain.
+# Shoutrrr
 
-The frontend stack is React 19, TypeScript, [Tailwind v4](https://tailwindcss.com), and the [shadcn/ui](https://ui.shadcn.com) + [radix-ui](https://www.radix-ui.com) component libraries. The backend runs PHP 8.5 and Laravel 13.
+**An open-source, self-hostable alternative to Buffer, Typefully & Hootsuite.**
 
-## What's different from the base kit
+Write once, publish everywhere. Schedule posts to X, Bluesky, and LinkedIn from one calendar — on your own server, with your own data.
 
-- **Workspaces (multi-tenancy).** First-class workspaces with memberships, roles, and email invitations. Models are workspace-scoped via `HasWorkspaceScope`, and the current workspace is resolved on login.
-- **Fuller authentication.** Built on [Laravel Fortify](https://laravel.com/docs/fortify) — registration, password reset, and email verification, plus **two-factor authentication (TOTP)** and **passkeys (WebAuthn)**.
-- **Social login.** OAuth sign-in through [Laravel Socialite](https://laravel.com/docs/socialite) (Google) with connected-account linking on top of the standard credentials flow.
-- **Production Docker image.** Multi-stage `docker/Dockerfile` running [Laravel Octane](https://laravel.com/docs/octane) on **FrankenPHP** worker mode for high-throughput serving.
-- **Typed routes.** [Laravel Wayfinder](https://github.com/laravel/wayfinder) generates TypeScript functions for controllers and named routes, imported from `@/actions` and `@/routes`.
-- **Modern tooling** (see below).
+![License](https://img.shields.io/badge/license-Apache--2.0-blue)
+![PHP](https://img.shields.io/badge/PHP-8.5-777BB4)
+![Laravel](https://img.shields.io/badge/Laravel-13-FF2D20)
+![React](https://img.shields.io/badge/React-19-61DAFB)
 
-## Tooling
+</div>
 
-| Concern | Tool | Command |
-| --- | --- | --- |
-| Tests | [Pest](https://pestphp.com) | `composer test` |
-| PHP style | [Pint](https://laravel.com/docs/pint) | `composer lint` |
-| PHP static analysis | [Larastan](https://github.com/larastan/larastan) (level 7) | `composer types:check` |
-| PHP refactoring | [Rector](https://getrector.com) | `composer refactor:check` / `composer refactor` |
-| JS package manager | [Bun](https://bun.sh) | `bun install` |
-| JS lint | [oxlint](https://oxc.rs) | `bun run lint:check` |
-| JS format | [oxfmt](https://oxc.rs) | `bun run format:check` |
+<!-- Add a product screenshot or GIF here, e.g. ![Shoutrrr composer](docs/screenshot.png) -->
 
-Run the full local gate (lint, format, type-check, refactor check, and the Pest suite) with:
+## What is Shoutrrr?
+
+Shoutrrr is a social media scheduling tool you run yourself. Connect your accounts, draft a post once, and send it to every network at the same time — or queue it to go out on a recurring schedule. No monthly seat fees, no third party holding your tokens or your data.
+
+It's built for individuals and teams: invite collaborators into a shared workspace, keep clients or brands separated, and see how your posts perform — all from a single, fast interface.
+
+## Why Shoutrrr?
+
+- **You own everything** — your posts, your audience tokens, your analytics. Self-hosted on your infrastructure.
+- **One post, every platform** — compose once and publish to multiple accounts, tweaking the text per network when you want.
+- **Plan ahead** — a posting queue with recurring time slots and a month calendar, so your feed stays consistent without you babysitting it.
+- **Made for teams** — workspaces, roles, and email invites keep clients and collaborators tidy.
+- **No vendor lock-in** — open source under the Apache 2.0 license, runs anywhere Docker does.
+
+## Supported platforms
+
+| Platform        | Connect with     | Publishing                          | Threads         | Analytics                            |
+| --------------- | ---------------- | ----------------------------------- | --------------- | ------------------------------------ |
+| **X** (Twitter) | OAuth 2.0        | ✅ (≤280 chars, up to 4 media)      | ✅              | likes, reposts, replies, impressions |
+| **Bluesky**     | App password     | ✅ (≤300 graphemes, up to 4 images) | ✅              | likes, reposts, replies              |
+| **LinkedIn**    | OAuth 2.0 (OIDC) | ✅ (≤3000 chars, up to 9 images)    | — (single post) | engagement metrics                   |
+
+## Features
+
+- 📝 **Composer** — draft with media and alt text, see a live character count for each network, and automatically split long posts into threads where the platform supports it.
+- 🚀 **Multi-account publishing** — fan one post out to many accounts at once, with optional per-platform overrides. Each target publishes independently and retries on failure.
+- 🗓️ **Queue & calendar** — set recurring posting slots (in your workspace's timezone), drop drafts into the queue, and review everything on a month calendar. Publish instantly whenever you like.
+- 📊 **Analytics** — follower and post-count trends per account, plus per-post engagement (likes, reposts, replies, impressions).
+- 🔗 **Connected accounts** — link accounts via OAuth (X, LinkedIn) or app password (Bluesky), group them into reusable sets, and get nudged when one needs reconnecting. Tokens are stored encrypted and refreshed automatically.
+- 👥 **Workspaces & team** — multiple workspaces with role-based memberships, email invitations, and ownership transfer. Every bit of data is scoped to its workspace.
+- 🔔 **Notifications** — in-app alerts when a post publishes or fails, or when an account needs attention.
+- 🔐 **Secure by default** — email/password with verification, two-factor (TOTP), passkeys (WebAuthn), and optional social login (Google, X, LinkedIn).
+
+## Self-hosting
+
+Shoutrrr ships as a single Docker image. The quickest start uses SQLite with no external services:
 
 ```bash
-composer ci:check
+git clone https://github.com/coollabsio/shoutrrr.git
+cd shoutrrr
+cp .env.example .env
+
+# Set an app key and your public URL in .env
+docker compose -f compose.all-in-one.yaml run --rm app php artisan key:generate --show   # copy into APP_KEY=
+#   APP_URL=https://social.example.com   (the address you'll visit)
+
+docker compose -f compose.all-in-one.yaml up -d --build
 ```
 
-## Getting started
+Open your `APP_URL`, register the first account, and you're in.
+
+The **all-in-one** image runs the web app, queue worker, and scheduler in one container — ideal for a single box. For larger setups, `compose.standalone.yaml` runs those as separate containers. Both default to SQLite; add `--profile postgres` and/or `--profile redis` (with the matching `.env` values) to scale out, or `INERTIA_SSR_ENABLED=true` for server-side rendering.
+
+### Deploy with Coolify
+
+[Coolify](https://coolify.io) deploys Shoutrrr straight from this repo using the bundled Compose file — it handles the domain, HTTPS, and persistent volumes for you.
+
+> An official Shoutrrr app is coming to the Coolify app directory soon for one-click deploys. Until then, use the manual from-source method below.
+
+1. In Coolify, click **+ New → Resource** and pick **Public Repository** (or Private, via the GitHub App). Enter `https://github.com/coollabsio/shoutrrr`.
+2. Set the **Build Pack** to **Docker Compose** and the **Docker Compose file** to `compose.all-in-one.yaml`.
+3. Under the `app` service, add a **Domain** pointing at port **8080**. Coolify provisions the TLS certificate automatically.
+4. Add these **Environment Variables**:
+
+   | Variable | Value |
+   | --- | --- |
+   | `APP_KEY` | a Laravel key — generate one with `php artisan key:generate --show` |
+   | `APP_URL` | your domain, e.g. `https://social.example.com` (must match the domain above) |
+   | `APP_ENV` | `production` |
+   | `APP_DEBUG` | `false` |
+
+   Add your `X_*`, `LINKEDIN_*`, and optional `GOOGLE_*` credentials here too (see [Connecting your accounts](#connecting-your-accounts)).
+5. Click **Deploy**.
+
+The Compose file declares named volumes for `storage` and the SQLite database, so your data and uploads survive redeploys. To run against managed Postgres/Redis instead, point the `DB_*` / `REDIS_*` env vars at them and switch `DB_CONNECTION`, `CACHE_STORE`, and `QUEUE_CONNECTION` accordingly.
+
+## Connecting your accounts
+
+**Bluesky** needs nothing extra — users connect with a Bluesky [app password](https://bsky.app/settings/app-passwords).
+
+**X** and **LinkedIn** publish through your own developer app, so you'll register one with each provider and add the credentials to `.env`. The redirect URIs must match what you register (they default to `${APP_URL}/...`):
+
+```dotenv
+# X — https://developer.x.com
+X_CLIENT_ID=
+X_CLIENT_SECRET=
+X_REDIRECT_URI="${APP_URL}/accounts/callback/x"
+
+# LinkedIn — https://www.linkedin.com/developers
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
+LINKEDIN_REDIRECT_URI="${APP_URL}/accounts/callback/linkedin"
+```
+
+Optionally, let people sign in with a social account instead of a password:
+
+```dotenv
+SOCIALITE_ENABLED=true
+SOCIALITE_PROVIDERS=google            # comma-separated: google,x,linkedin
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI="${APP_URL}/auth/google/callback"
+```
+
+> **Heads up:** publishing and scheduling rely on a running queue worker and scheduler. The provided Docker setups start both for you. Analytics capture is off until you enable `metrics.enabled` (see `config/metrics.php`).
+
+## Development
+
+Shoutrrr is a Laravel 13 (PHP 8.5) app with a React 19 + TypeScript frontend on [Inertia](https://inertiajs.com) v3, [Tailwind v4](https://tailwindcss.com), and [shadcn/ui](https://ui.shadcn.com). It runs on [Laravel Octane](https://laravel.com/docs/octane) (FrankenPHP), with typed routes generated by [Wayfinder](https://github.com/laravel/wayfinder).
 
 ```bash
-composer setup   # install deps, copy .env, generate key, migrate, build assets
-composer dev      # serve + queue + logs + Vite, all at once
+composer setup   # install deps, copy .env, generate key, migrate, bun install, build assets
+composer dev     # serve + queue + scheduler + logs + Vite, all at once
 ```
 
-## CI
+> Uses [Bun](https://bun.sh) for the frontend (`bun install`, `bun run …`) — not npm/pnpm.
 
-GitHub Actions runs two workflows on push and pull requests:
+### How publishing works
 
-- **tests** — installs dependencies, builds assets, runs Larastan, and executes the Pest suite on PHP 8.5.
-- **linter** — runs Pint, oxfmt, and oxlint.
+A post is composed once, then split into one **target** per connected account. The scheduler dispatches due posts every minute; a queued `PublishPostTarget` job then publishes each target independently, with retries, idempotency, and a per-attempt audit trail. Hourly jobs refresh OAuth tokens before they expire, and (when enabled) metrics are captured every 15 minutes.
+
+### Tooling
+
+| Concern             | Tool                                                       | Command                                         |
+| ------------------- | ---------------------------------------------------------- | ----------------------------------------------- |
+| Tests               | [Pest](https://pestphp.com)                                | `composer test`                                 |
+| PHP style           | [Pint](https://laravel.com/docs/pint)                      | `composer lint`                                 |
+| PHP static analysis | [Larastan](https://github.com/larastan/larastan) (level 7) | `composer types:check`                          |
+| PHP refactoring     | [Rector](https://getrector.com)                            | `composer refactor:check` / `composer refactor` |
+| JS lint / format    | [oxlint](https://oxc.rs) / [oxfmt](https://oxc.rs)         | `bun run lint:check` / `bun run format:check`   |
+
+Run the full local gate (lint, format, type-check, refactor check, Pest suite) with `composer ci:check`.
 
 ## License
 
-Open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Open-source software licensed under the [Apache 2.0 license](LICENSE).
