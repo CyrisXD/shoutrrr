@@ -125,6 +125,24 @@ export default function Composer({
     });
     const publishStatus = usePublishStatus({ pagePost: post });
 
+    // Persist a destination change immediately rather than waiting out the
+    // autosave debounce. This MUST run in an effect — AFTER the reducer commits
+    // — so `flush` closes over the new destination. Calling flush() synchronously
+    // inside the selector's onChange captured the PRE-dispatch state and
+    // persisted the OLD destination, so a quick switch-then-publish published to
+    // the previous set (e.g. the default "all accounts"). flush's own guards make
+    // this a no-op on mount and on server-driven hydrates (saveState is 'saved'),
+    // so it only fires for genuine user switches.
+    const flushedDestination = useRef(state.destination);
+    useEffect(() => {
+        if (flushedDestination.current === state.destination) {
+            return;
+        }
+        flushedDestination.current = state.destination;
+        void flush();
+        // oxlint-disable-next-line react-hooks/exhaustive-deps
+    }, [state.destination]);
+
     // A post that isn't a draft is read-only: show its content/media + live
     // status, but no editing, media changes, or re-publishing.
     const readOnly = post !== null && !postCapabilities(post).canEdit;
@@ -216,10 +234,9 @@ export default function Composer({
                         sets={sets}
                         destination={state.destination}
                         disabled={readOnly}
-                        onChange={(destination) => {
-                            dispatch({ type: 'setDestination', destination });
-                            void flush();
-                        }}
+                        onChange={(destination) =>
+                            dispatch({ type: 'setDestination', destination })
+                        }
                     />
                     {!readOnly && (
                         <SaveIndicator
