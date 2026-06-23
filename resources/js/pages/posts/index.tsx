@@ -26,7 +26,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
     Empty,
-    EmptyContent,
     EmptyDescription,
     EmptyHeader,
     EmptyMedia,
@@ -59,16 +58,6 @@ const PLATFORM_OPTIONS: { value: string; label: string }[] = [
     { value: 'bluesky', label: 'Bluesky' },
     { value: 'linkedin', label: 'LinkedIn' },
 ];
-
-function emptyMessage(status: string, hasActiveFilter: boolean): string {
-    if (hasActiveFilter) {
-        return 'No posts match your search or filters.';
-    }
-    if (status === 'scheduled') return 'No scheduled posts.';
-    if (status === 'draft') return 'No drafts yet. Start composing.';
-    if (status === 'published') return 'No published posts yet.';
-    return 'No posts yet. Start composing.';
-}
 
 function FilterChip({
     label,
@@ -339,26 +328,13 @@ export default function PostsIndex({ posts, filters, sets, counts }: Props) {
                                                 ? 'No matching posts'
                                                 : 'No posts yet'}
                                         </EmptyTitle>
-                                        <EmptyDescription>
-                                            {emptyMessage(
-                                                filters.status,
-                                                hasActiveFilter,
-                                            )}
-                                        </EmptyDescription>
+                                        {hasActiveFilter && (
+                                            <EmptyDescription>
+                                                No posts match your search or
+                                                filters.
+                                            </EmptyDescription>
+                                        )}
                                     </EmptyHeader>
-                                    {!hasActiveFilter && (
-                                        <EmptyContent>
-                                            <Button
-                                                asChild
-                                                variant="outline"
-                                                size="sm"
-                                            >
-                                                <Link href={dashboard().url}>
-                                                    New post
-                                                </Link>
-                                            </Button>
-                                        </EmptyContent>
-                                    )}
                                 </Empty>
                             ) : (
                                 <InfiniteScroll
