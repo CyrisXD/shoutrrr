@@ -6,15 +6,6 @@ import {
     shouldShowDashboardPublishingSection,
 } from '@/lib/dashboard/accounts';
 
-describe('shouldShowDashboardPublishingSection', () => {
-    it('hides the composer until at least one account is connected', () => {
-        expect(shouldShowDashboardPublishingSection([])).toBe(false);
-        expect(
-            shouldShowDashboardPublishingSection([{ id: 'account-1' }]),
-        ).toBe(true);
-    });
-});
-
 describe('canManageConnectedAccounts', () => {
     it('detects account management permission', () => {
         expect(canManageConnectedAccounts(['workspace.read'])).toBe(false);
@@ -23,6 +14,15 @@ describe('canManageConnectedAccounts', () => {
                 'workspace.read',
                 'workspace.accounts.manage',
             ]),
+        ).toBe(true);
+    });
+});
+
+describe('shouldShowDashboardPublishingSection', () => {
+    it('shows the composer only when the workspace has accounts', () => {
+        expect(shouldShowDashboardPublishingSection([])).toBe(false);
+        expect(
+            shouldShowDashboardPublishingSection([{ id: 'account-1' }]),
         ).toBe(true);
     });
 });
