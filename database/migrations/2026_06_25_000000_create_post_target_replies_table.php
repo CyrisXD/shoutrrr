@@ -26,7 +26,12 @@ return new class extends Migration
             $table->timestamp('read_at')->nullable();
             $table->string('status')->default('pending');
             $table->string('our_reply_remote_id')->nullable();
+            $table->timestamp('liked_at')->nullable();
+            $table->string('like_remote_id')->nullable();
             $table->boolean('is_ours')->default(false);
+            // Null for inbound replies and already-sent rows; set only while an
+            // outgoing media reply is in flight (sending → sent | failed).
+            $table->string('send_status')->nullable();
             $table->timestamp('fetched_at');
             $table->timestamps();
 
