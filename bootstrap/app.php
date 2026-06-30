@@ -10,7 +10,6 @@ use App\Http\Middleware\WorkspaceMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -38,7 +37,15 @@ return Application::configure(basePath: dirname(__DIR__))
             // must be set first or scoped queries leak across workspaces.
             WorkspaceMiddleware::class,
             HandleInertiaRequests::class,
-            AddLinkHeadersForPreloadedAssets::class,
+            // NOTE: AddLinkHeadersForPreloadedAssets is intentionally not
+            // registered. It emits a `Link: rel=preload` HTTP header for each
+            // Vite asset, but under Octane the underlying preloadedAssets list
+            // persists across requests, so behind a TLS-terminating proxy the
+            // header gets frozen with http:// URLs from an earlier request and
+            // never reflects the per-request https scheme. The browser then
+            // blocks those preloads as mixed content. The header is redundant
+            // with the <link rel="modulepreload"> tags already rendered into the
+            // document (which are generated per request and resolve to https).
             CaptureMcpWorkspaceSelection::class,
         ]);
     })
