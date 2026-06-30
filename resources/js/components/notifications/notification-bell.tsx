@@ -292,7 +292,7 @@ function NotificationRow({
             <span
                 aria-hidden
                 className={cn(
-                    'mt-1.5 size-1.5 shrink-0 rounded-full',
+                    'mt-4 size-1.5 shrink-0 rounded-full',
                     notification.read ? 'bg-transparent' : 'bg-primary',
                 )}
             />
