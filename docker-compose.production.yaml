@@ -44,6 +44,12 @@ x-environment: &app-env
     # In-container SSR uses localhost; off by default.
     INERTIA_SSR_ENABLED: "${INERTIA_SSR_ENABLED:-false}"
     INERTIA_SSR_URL: "${INERTIA_SSR_URL:-http://127.0.0.1:13714}"
+    # Connected-account OAuth (X for posting). Only set these when you have a
+    # real app; leaving them empty would mark the platform "configured" with
+    # blank creds. Add LINKEDIN_* the same way if connecting LinkedIn.
+    X_CLIENT_ID: "${X_CLIENT_ID}"
+    X_CLIENT_SECRET: "${X_CLIENT_SECRET}"
+    X_REDIRECT_URI: "${X_REDIRECT_URI}"
 
 services:
     app:
