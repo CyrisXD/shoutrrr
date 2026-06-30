@@ -47,8 +47,12 @@ x-environment: &app-env
 
 services:
     app:
-        image: "ghcr.io/coollabsio/shoutrrr:latest"
-        pull_policy: always
+        # DEPLOY-ONLY (not for the PR): build the image from this branch's
+        # source on the host so the fix actually deploys, instead of pulling the
+        # prebuilt upstream image. Requires the build host to support AVX.
+        build:
+            context: .
+            dockerfile: Dockerfile
         restart: unless-stopped
         environment:
             <<: *app-env
